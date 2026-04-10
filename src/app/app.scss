@@ -1,0 +1,36 @@
+.sidenav-container {
+  height: 100vh;
+}
+
+mat-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+
+  .app-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .spacer {
+    flex: 1;
+  }
+
+  a.active-link {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+  }
+}
+
+mat-sidenav {
+  width: 240px;
+
+  a.active-link {
+    background: rgba(0, 0, 0, 0.08);
+  }
+}
+
+.content {
+  padding: 1rem;
+}
