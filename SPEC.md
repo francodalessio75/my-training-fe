@@ -41,25 +41,23 @@ A single athlete or fitness enthusiast who wants to self-manage and track their 
 
 ### Frontend
 
-| Concern | Technology |
-|---|---|
-| Framework | Angular 21 (standalone components, signals) |
-| UI Library | Angular Material 21 |
-| State Management | NgRx Signal Store |
-| HTTP Client | Angular `HttpClient` |
-| Auth | JWT (stored in `localStorage`, attached via `HttpInterceptor`) |
-| IDE | VS Code + Angular CLI MCP Server + Angular Material Blocks MCP Server |
+| Concern          | Technology                                                            |
+| ---------------- | --------------------------------------------------------------------- |
+| Framework        | Angular 21 (standalone components, signals)                           |
+| UI Library       | Angular Material 21                                                   |
+| State Management | NgRx Signal Store                                                     |
+| HTTP Client      | Angular `HttpClient`                                                  |
+| Auth             | JWT (stored in `localStorage`, attached via `HttpInterceptor`)        |
+| IDE              | VS Code + Angular CLI MCP Server + Angular Material Blocks MCP Server |
 
 ### Backend
 
-| Concern | Technology |
-|---|---|
-| Language | Python 3.12+ |
-| Framework | FastAPI |
-| Database | MongoDB Atlas (via Motor / Beanie ODM) |
-| Auth | JWT (OAuth2 Password Bearer) |
-| API Style | RESTful JSON API |
-| Containerization | Docker + Docker Compose |
+| Concern   | Technology                       |
+| --------- | -------------------------------- |
+| Framework | FastAPI (Python)                 |
+| Database  | MongoDB (via Motor / Beanie ODM) |
+| Auth      | JWT (OAuth2 Password Bearer)     |
+| API Style | RESTful JSON API                 |
 
 ### Frontend Project Structure
 
@@ -104,23 +102,12 @@ src/
 
 ## 3. Data Models
 
-### User
-
-```typescript
-interface User {
-  id: string;
-  email: string;
-  displayName: string;
-  description?: string;
-}
-```
-
 ### TrainingType
 
 ```typescript
 interface TrainingType {
   id: string;
-  name: string;           // e.g. "PUSH", "PULL", "LEGS", "MIXED"
+  name: string; // e.g. "PUSH", "PULL", "LEGS", "MIXED"
   description: string;
 }
 ```
@@ -130,7 +117,7 @@ interface TrainingType {
 ```typescript
 interface MuscleGroup {
   id: string;
-  name: string;           // e.g. "Chest", "Hamstrings", "Quadriceps"
+  name: string; // e.g. "Chest", "Hamstrings", "Quadriceps"
   description?: string;
 }
 ```
@@ -142,12 +129,12 @@ interface Exercise {
   id: string;
   name: string;
   trainingTypeId: string;
-  trainingType?: TrainingType;      // populated on read
+  trainingType?: TrainingType; // populated on read
   muscleGroupId: string;
-  muscleGroup?: MuscleGroup;        // populated on read
-  executionDescription: string;     // how to perform the exercise
-  loadDescription: string;          // describes how to evaluate a single unit of load
-                                    // e.g. "kg on barbell", "body weight"
+  muscleGroup?: MuscleGroup; // populated on read
+  executionDescription: string; // how to perform the exercise
+  loadDescription: string; // describes how to evaluate a single unit of load
+  // e.g. "kg on barbell", "body weight"
   notes?: string;
 }
 ```
@@ -158,15 +145,15 @@ interface Exercise {
 interface ExecutedSet {
   id: string;
   exerciseId: string;
-  exercise?: Exercise;              // populated on read
-  load: number;                     // raw load value
-  loadDescription: string;          // describes execution variations
-                                    // e.g. "80kg barbell, paused at bottom"
+  exercise?: Exercise; // populated on read
+  load: number; // raw load value
+  loadDescription: string; // describes execution variations
+  // e.g. "80kg barbell, paused at bottom"
   repetitions: number;
   notes?: string;
 
   // Computed via withComputed() in executedSetsStore, never stored
-  readonly totalLoad: number;       // load × repetitions
+  readonly totalLoad: number; // load × repetitions
 }
 ```
 
@@ -175,14 +162,14 @@ interface ExecutedSet {
 ```typescript
 interface WorkoutUnit {
   id: string;
-  trainingTypeId: string;           // may differ from individual exercises,
-  trainingType?: TrainingType;      // e.g. MIXED for heterogeneous circuits
+  trainingTypeId: string; // may differ from individual exercises,
+  trainingType?: TrainingType; // e.g. MIXED for heterogeneous circuits
   executedSets: ExecutedSet[];
-  totalLoadDescription: string;     // user-written text (required)
+  totalLoadDescription: string; // user-written text (required)
   notes?: string;
 
   // Computed via withComputed() in workoutUnitsStore, never stored
-  readonly totalLoad: number;       // sum of all ExecutedSet.totalLoad
+  readonly totalLoad: number; // sum of all ExecutedSet.totalLoad
 }
 ```
 
@@ -193,35 +180,35 @@ interface Session {
   id: string;
   userId: string;
   name: string;
-  date: string;                     // ISO date
+  date: string; // ISO date
   workoutUnits: WorkoutUnit[];
-  totalLoadDescription: string;     // user-written text (required)
+  totalLoadDescription: string; // user-written text (required)
   notes?: string;
   createdAt: string;
   updatedAt: string;
 
   // Computed via withComputed() in sessionsStore, never stored
-  readonly totalLoad: number;       // sum of all WorkoutUnit.totalLoad
+  readonly totalLoad: number; // sum of all WorkoutUnit.totalLoad
 }
 ```
 
 ### Computed Load Rules
 
-| Level | Formula |
-|---|---|
-| `ExecutedSet.totalLoad` | `load × repetitions` |
+| Level                   | Formula                        |
+| ----------------------- | ------------------------------ |
+| `ExecutedSet.totalLoad` | `load × repetitions`           |
 | `WorkoutUnit.totalLoad` | `sum of ExecutedSet.totalLoad` |
-| `Session.totalLoad` | `sum of WorkoutUnit.totalLoad` |
+| `Session.totalLoad`     | `sum of WorkoutUnit.totalLoad` |
 
-> Computed values are implemented using NgRx Signal Store's `withComputed()` hook and are never persisted to the database.
+> `totalLoad` is computed **at ingestion time** (when store methods map the API response, bottom-up: sets → units → sessions) and attached to each model object as a plain `number`. NgRx `withComputed()` then sums these plain numbers — it does **not** call them as signals. Values are never persisted to the database.
 
 ### Catalog Collections Summary
 
-| Collection | Purpose | Editable |
-|---|---|---|
+| Collection       | Purpose                                           | Editable         |
+| ---------------- | ------------------------------------------------- | ---------------- |
 | `training-types` | Training type labels (PUSH, PULL, LEGS, MIXED, …) | ✅ User-editable |
-| `muscle-groups` | Muscle group catalog (Chest, Hamstrings, …) | ✅ User-editable |
-| `exercises` | Exercise library, references both catalogs above | ✅ User-editable |
+| `muscle-groups`  | Muscle group catalog (Chest, Hamstrings, …)       | ✅ User-editable |
+| `exercises`      | Exercise library, references both catalogs above  | ✅ User-editable |
 
 > All catalogs are pre-seeded from the database. The user can extend them at any time. New entries can be added by inserting a new document — no schema or code changes required.
 
@@ -233,71 +220,90 @@ Base URL: `/api/v1`
 
 > Computed fields (`totalLoad` at set, unit, and session level) are calculated on the **frontend**. The API never returns nor stores them.
 
+> Mutation response policy for nested resources: `POST`, `PUT` and `PATCH` on workout units and executed sets return a full session payload; `DELETE` returns `204 No Content`. Stores reload the session after delete.
+
 ### Auth
 
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/auth/login` | Login, returns JWT access token |
-| POST | `/auth/refresh` | Refresh access token |
-| GET | `/auth/me` | Get current authenticated user |
+| Method | Endpoint        | Description                     |
+| ------ | --------------- | ------------------------------- |
+| POST   | `/auth/login`   | Login, returns JWT access token |
+| POST   | `/auth/refresh` | Refresh access token            |
+| GET    | `/auth/me`      | Get current authenticated user  |
 
 > User registration is handled directly on the backend. No public register endpoint is exposed to the frontend.
 
 ### Training Types
 
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/training-types` | List all training types |
-| POST | `/training-types` | Create a training type |
-| PUT | `/training-types/{id}` | Update a training type |
-| DELETE | `/training-types/{id}` | Delete a training type |
+| Method | Endpoint               | Description             |
+| ------ | ---------------------- | ----------------------- |
+| GET    | `/training-types`      | List all training types |
+| POST   | `/training-types`      | Create a training type  |
+| PUT    | `/training-types/{id}` | Update a training type  |
+| DELETE | `/training-types/{id}` | Delete a training type  |
 
 ### Muscle Groups
 
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/muscle-groups` | List all muscle groups |
-| POST | `/muscle-groups` | Create a muscle group |
-| PUT | `/muscle-groups/{id}` | Update a muscle group |
-| DELETE | `/muscle-groups/{id}` | Delete a muscle group |
+| Method | Endpoint              | Description            |
+| ------ | --------------------- | ---------------------- |
+| GET    | `/muscle-groups`      | List all muscle groups |
+| POST   | `/muscle-groups`      | Create a muscle group  |
+| PUT    | `/muscle-groups/{id}` | Update a muscle group  |
+| DELETE | `/muscle-groups/{id}` | Delete a muscle group  |
 
 ### Exercises
 
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/exercises` | List all exercises (supports `?trainingTypeId=`, `?muscleGroupId=`) |
-| GET | `/exercises/{id}` | Get exercise detail |
-| POST | `/exercises` | Create an exercise |
-| PUT | `/exercises/{id}` | Update an exercise |
-| DELETE | `/exercises/{id}` | Delete an exercise |
+| Method | Endpoint          | Description                                                         |
+| ------ | ----------------- | ------------------------------------------------------------------- |
+| GET    | `/exercises`      | List all exercises (supports `?trainingTypeId=`, `?muscleGroupId=`) |
+| GET    | `/exercises/{id}` | Get exercise detail                                                 |
+| POST   | `/exercises`      | Create an exercise                                                  |
+| PUT    | `/exercises/{id}` | Update an exercise                                                  |
+| DELETE | `/exercises/{id}` | Delete an exercise                                                  |
 
 ### Sessions
 
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/sessions` | List all sessions (supports `?date=`, `?from=`, `?to=`, `?limit=`, `?skip=`) |
-| GET | `/sessions/{id}` | Get full session detail (with workout units and executed sets) |
-| POST | `/sessions` | Create a new session |
-| PUT | `/sessions/{id}` | Update a session |
-| DELETE | `/sessions/{id}` | Delete a session |
+| Method | Endpoint         | Description                                                                  |
+| ------ | ---------------- | ---------------------------------------------------------------------------- |
+| GET    | `/sessions`      | List all sessions (supports `?date=`, `?from=`, `?to=`, `?limit=`, `?skip=`) |
+| GET    | `/sessions/{id}` | Get full session detail (with workout units and executed sets)               |
+| POST   | `/sessions`      | Create a new session                                                         |
+| PUT    | `/sessions/{id}` | Update a session                                                             |
+| DELETE | `/sessions/{id}` | Delete a session                                                             |
 
 ### Workout Units
 
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/sessions/{sessionId}/units` | Add a workout unit to a session |
-| PUT | `/sessions/{sessionId}/units/{unitId}` | Update a workout unit |
-| DELETE | `/sessions/{sessionId}/units/{unitId}` | Remove a workout unit |
-| PATCH | `/sessions/{sessionId}/units/reorder` | Reorder workout units |
+| Method | Endpoint                               | Description                     |
+| ------ | -------------------------------------- | ------------------------------- |
+| POST   | `/sessions/{sessionId}/units`          | Add a workout unit to a session |
+| PUT    | `/sessions/{sessionId}/units/{unitId}` | Update a workout unit           |
+| DELETE | `/sessions/{sessionId}/units/{unitId}` | Remove a workout unit           |
+| PATCH  | `/sessions/{sessionId}/units/reorder`  | Reorder workout units           |
 
 ### Executed Sets
 
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/sessions/{sessionId}/units/{unitId}/sets` | Add an executed set |
-| PUT | `/sessions/{sessionId}/units/{unitId}/sets/{setId}` | Update an executed set |
+| Method | Endpoint                                            | Description            |
+| ------ | --------------------------------------------------- | ---------------------- |
+| POST   | `/sessions/{sessionId}/units/{unitId}/sets`         | Add an executed set    |
+| PUT    | `/sessions/{sessionId}/units/{unitId}/sets/{setId}` | Update an executed set |
 | DELETE | `/sessions/{sessionId}/units/{unitId}/sets/{setId}` | Remove an executed set |
-| PATCH | `/sessions/{sessionId}/units/{unitId}/sets/reorder` | Reorder executed sets |
+| PATCH  | `/sessions/{sessionId}/units/{unitId}/sets/reorder` | Reorder executed sets  |
+
+### Naming Convention Contract
+
+API payloads are standardized to `camelCase` for both backend and frontend contracts.
+
+| API payload field       | Frontend model field                                       |
+| ----------------------- | ---------------------------------------------------------- |
+| `userId`                | `userId`                                                   |
+| `workoutUnits`          | `workoutUnits`                                             |
+| `totalLoadDescription`  | `totalLoadDescription`                                     |
+| `createdAt`             | `createdAt`                                                |
+| `updatedAt`             | `updatedAt`                                                |
+| `trainingType` (object) | `trainingType` (object), optional `trainingTypeId` derived |
+| `muscleGroup` (object)  | `muscleGroup` (object), optional `muscleGroupId` derived   |
+| `exercise` (object)     | `exercise` (object), optional `exerciseId` derived         |
+
+> No snake_case-to-camelCase mapping layer is required for payload field names.
 
 ---
 
@@ -347,7 +353,7 @@ Base URL: `/api/v1`
 - **US-23** — As a user, I can view the full detail of an exercise (name, training type, muscle group, execution description, load description, notes).
 - **US-24** — As a user, I can create a new exercise.
 - **US-25** — As a user, I can edit an existing exercise.
-- **US-26** — As a user, I can delete an exercise after confirming a dialog. If the exercise is referenced by one or more executed sets, deletion is **blocked** and a warning is shown.
+- **US-26** — As a user, I can delete an exercise after confirming a dialog. If the exercise is referenced by one or more executed sets, deletion is blocked and a warning is shown.
 
 > The exercise library is pre-seeded from the database. The user can extend it with custom exercises at any time.
 
@@ -369,16 +375,16 @@ Base URL: `/api/v1`
 
 ### User Stories Summary
 
-| Group | Stories |
-|---|---|
-| 🔐 Authentication | US-01 → US-03 |
-| 🏠 Dashboard | US-04 → US-05 |
+| Group                 | Stories       |
+| --------------------- | ------------- |
+| 🔐 Authentication     | US-01 → US-03 |
+| 🏠 Dashboard          | US-04 → US-05 |
 | 📋 Session Management | US-06 → US-11 |
-| 🏋️ Workout Units | US-12 → US-15 |
-| 💪 Executed Sets | US-16 → US-21 |
-| 📚 Exercise Library | US-22 → US-26 |
-| 🏷️ Training Types | US-27 → US-30 |
-| 🦵 Muscle Groups | US-31 → US-34 |
+| 🏋️ Workout Units      | US-12 → US-15 |
+| 💪 Executed Sets      | US-16 → US-21 |
+| 📚 Exercise Library   | US-22 → US-26 |
+| 🏷️ Training Types     | US-27 → US-30 |
+| 🦵 Muscle Groups      | US-31 → US-34 |
 
 ---
 
@@ -390,86 +396,85 @@ All state is managed with **NgRx Signal Store**. Each feature has its own dedica
 
 ### Auth Store (`authStore`)
 
-| State | Type | Description |
-|---|---|---|
-| `currentUser` | `User \| null` | Authenticated user |
-| `token` | `string \| null` | JWT access token (mirrored from localStorage) |
-| `isLoading` | `boolean` | Auth operation in progress |
-| `error` | `string \| null` | Auth error message |
+| State         | Type             | Description                                   |
+| ------------- | ---------------- | --------------------------------------------- |
+| `currentUser` | `User \| null`   | Authenticated user                            |
+| `token`       | `string \| null` | JWT access token (mirrored from localStorage) |
+| `isLoading`   | `boolean`        | Auth operation in progress                    |
+| `error`       | `string \| null` | Auth error message                            |
 
 **Methods:** `login()`, `logout()`, `loadCurrentUser()`
 
 ### Sessions Store (`sessionsStore`)
 
-| State | Type | Description |
-|---|---|---|
-| `sessions` | `Session[]` | Paginated list of sessions |
-| `selectedSession` | `Session \| null` | Currently open session with full detail |
-| `totalCount` | `number` | Total number of sessions (for pagination) |
-| `isLoading` | `boolean` | Fetch in progress |
-| `error` | `string \| null` | Error message |
+| State             | Type              | Description                               |
+| ----------------- | ----------------- | ----------------------------------------- |
+| `sessions`        | `Session[]`       | Paginated list of sessions                |
+| `selectedSession` | `Session \| null` | Currently open session with full detail   |
+| `totalCount`      | `number`          | Total number of sessions (for pagination) |
+| `isLoading`       | `boolean`         | Fetch in progress                         |
+| `error`           | `string \| null`  | Error message                             |
 
 **Methods:** `loadSessions()`, `loadSession(id)`, `createSession()`, `updateSession()`, `deleteSession()`
 
 **Computed (`withComputed()`):**
+
 ```typescript
 withComputed(({ selectedSession }) => ({
-  totalLoad: computed(() =>
-    selectedSession()?.workoutUnits.reduce((acc, u) => acc + u.totalLoad(), 0) ?? 0
-  )
-}))
+  totalLoad: computed(
+    () => selectedSession()?.workoutUnits.reduce((acc, u) => acc + u.totalLoad, 0) ?? 0,
+  ),
+}));
 ```
 
 ### Workout Units Store (`workoutUnitsStore`)
 
-| State | Type | Description |
-|---|---|---|
-| `workoutUnits` | `WorkoutUnit[]` | Workout units of the current session |
-| `selectedUnit` | `WorkoutUnit \| null` | Currently selected workout unit |
-| `isLoading` | `boolean` | Operation in progress |
-| `error` | `string \| null` | Error message |
+| State          | Type                  | Description                          |
+| -------------- | --------------------- | ------------------------------------ |
+| `workoutUnits` | `WorkoutUnit[]`       | Workout units of the current session |
+| `selectedUnit` | `WorkoutUnit \| null` | Currently selected workout unit      |
+| `isLoading`    | `boolean`             | Operation in progress                |
+| `error`        | `string \| null`      | Error message                        |
 
 **Methods:** `loadUnits(sessionId)`, `addUnit()`, `updateUnit()`, `deleteUnit()`, `reorderUnits()`
 
 **Computed (`withComputed()`):**
+
 ```typescript
 withComputed(({ workoutUnits }) => ({
-  totalLoad: computed(() =>
-    workoutUnits().reduce((acc, u) => acc + u.totalLoad(), 0)
-  )
-}))
+  totalLoad: computed(() => workoutUnits().reduce((acc, u) => acc + u.totalLoad, 0)),
+}));
 ```
 
 **Lifecycle (`withHooks()`):** store is reset `onDestroy` when navigating away from a session.
 
 ### Executed Sets Store (`executedSetsStore`)
 
-| State | Type | Description |
-|---|---|---|
-| `executedSets` | `ExecutedSet[]` | Executed sets of the current workout unit |
-| `isLoading` | `boolean` | Operation in progress |
-| `error` | `string \| null` | Error message |
+| State          | Type             | Description                               |
+| -------------- | ---------------- | ----------------------------------------- |
+| `executedSets` | `ExecutedSet[]`  | Executed sets of the current workout unit |
+| `isLoading`    | `boolean`        | Operation in progress                     |
+| `error`        | `string \| null` | Error message                             |
 
 **Methods:** `loadSets(sessionId, unitId)`, `addSet()`, `updateSet()`, `deleteSet()`, `reorderSets()`
 
 **Computed (`withComputed()`):**
+
 ```typescript
 withComputed(({ executedSets }) => ({
-  totalLoad: computed(() =>
-    executedSets().reduce((acc, s) => acc + s.load * s.repetitions, 0)
-  )
-}))
+  totalLoad: computed(() => executedSets().reduce((acc, s) => acc + s.load * s.repetitions, 0)),
+}));
 ```
 
 **Lifecycle (`withHooks()`):** store is reset `onDestroy` when navigating away.
 
 ### Exercises Store (`exercisesStore`)
 
-| State | Type | Description |
-|---|---|---|
-| `exercises` | `Exercise[]` | Full exercise library |
-| `isLoading` | `boolean` | Fetch in progress |
-| `error` | `string \| null` | Error message |
+| State       | Type             | Description           |
+| ----------- | ---------------- | --------------------- |
+| `exercises` | `Exercise[]`     | Full exercise library |
+| `isLoading` | `boolean`        | Fetch in progress     |
+| `error`     | `string \| null` | Error message         |
 
 **Methods:** `loadExercises()`, `createExercise()`, `updateExercise()`, `deleteExercise()`
 
@@ -477,11 +482,11 @@ withComputed(({ executedSets }) => ({
 
 ### Training Types Store (`trainingTypesStore`)
 
-| State | Type | Description |
-|---|---|---|
+| State           | Type             | Description        |
+| --------------- | ---------------- | ------------------ |
 | `trainingTypes` | `TrainingType[]` | All training types |
-| `isLoading` | `boolean` | Fetch in progress |
-| `error` | `string \| null` | Error message |
+| `isLoading`     | `boolean`        | Fetch in progress  |
+| `error`         | `string \| null` | Error message      |
 
 **Methods:** `loadTrainingTypes()`, `createTrainingType()`, `updateTrainingType()`, `deleteTrainingType()`
 
@@ -489,11 +494,11 @@ withComputed(({ executedSets }) => ({
 
 ### Muscle Groups Store (`muscleGroupsStore`)
 
-| State | Type | Description |
-|---|---|---|
-| `muscleGroups` | `MuscleGroup[]` | All muscle groups |
-| `isLoading` | `boolean` | Fetch in progress |
-| `error` | `string \| null` | Error message |
+| State          | Type             | Description       |
+| -------------- | ---------------- | ----------------- |
+| `muscleGroups` | `MuscleGroup[]`  | All muscle groups |
+| `isLoading`    | `boolean`        | Fetch in progress |
+| `error`        | `string \| null` | Error message     |
 
 **Methods:** `loadMuscleGroups()`, `createMuscleGroup()`, `updateMuscleGroup()`, `deleteMuscleGroup()`
 
@@ -520,15 +525,15 @@ export class AppComponent {
 
 ### Stores Summary
 
-| Store | Scope | Startup | Reset onDestroy |
-|---|---|---|---|
-| `authStore` | Auth & current user | — | — |
-| `sessionsStore` | Session list & selected session | — | — |
-| `workoutUnitsStore` | Units of current session | — | ✅ |
-| `executedSetsStore` | Sets of current unit | — | ✅ |
-| `exercisesStore` | Exercise library | ✅ AppComponent | — |
-| `trainingTypesStore` | Training types catalog | ✅ AppComponent | — |
-| `muscleGroupsStore` | Muscle groups catalog | ✅ AppComponent | — |
+| Store                | Scope                           | Startup         | Reset onDestroy |
+| -------------------- | ------------------------------- | --------------- | --------------- |
+| `authStore`          | Auth & current user             | —               | —               |
+| `sessionsStore`      | Session list & selected session | —               | —               |
+| `workoutUnitsStore`  | Units of current session        | —               | ✅              |
+| `executedSetsStore`  | Sets of current unit            | —               | ✅              |
+| `exercisesStore`     | Exercise library                | ✅ AppComponent | —               |
+| `trainingTypesStore` | Training types catalog          | ✅ AppComponent | —               |
+| `muscleGroupsStore`  | Muscle groups catalog           | ✅ AppComponent | —               |
 
 ---
 
@@ -582,4 +587,4 @@ Contains: user display name, email, and description. Read-only at this stage.
 
 ---
 
-*Last updated: April 2026*
+_Last updated: April 2026_
