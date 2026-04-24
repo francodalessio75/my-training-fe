@@ -1,15 +1,14 @@
-import { inject } from '@angular/core';
+import { inject, computed } from '@angular/core';
 import {
   patchState,
   signalStore,
   withComputed,
   withHooks,
   withMethods,
-  withState,
+  withState
 } from '@ngrx/signals';
-import { computed } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { AuthService, User } from '../core/auth/auth.service';
+import { AuthService, User } from './auth.service';
 
 const TOKEN_KEY = 'auth_token';
 

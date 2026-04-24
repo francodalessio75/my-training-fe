@@ -8,7 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatListModule } from '@angular/material/list';
 import { map } from 'rxjs/operators';
-import { AuthStore } from './store/auth.store';
+import { AuthStore } from './domains/auth/data/auth.store';
 
 interface NavLink {
   path: string;

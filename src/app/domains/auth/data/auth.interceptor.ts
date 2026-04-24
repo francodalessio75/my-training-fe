@@ -1,6 +1,6 @@
 import { HttpHandlerFn, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { AuthStore } from '../../store/auth.store';
+import { AuthStore } from './auth.store';
 
 export const authInterceptor: HttpInterceptorFn = (
   req: HttpRequest<unknown>,
